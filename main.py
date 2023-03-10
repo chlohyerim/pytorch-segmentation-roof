@@ -18,7 +18,7 @@ import segmentation_dataset
 import aug
 import loader
 
-index = 5
+index = 3
 
 train_Xi_trans = loader.train_dataset.__getitem__(index)[0]
 train_yi_trans = loader.train_dataset.__getitem__(index)[1]

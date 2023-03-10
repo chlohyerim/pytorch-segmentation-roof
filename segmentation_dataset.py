@@ -3,7 +3,7 @@ from torch.utils import data
 
 import PIL
 
-random_seed = 42
+random_seed = 1
 
 # Segmentation을 위한 dataset 클래스 정의
 class SegmentationDataset(data.Dataset):

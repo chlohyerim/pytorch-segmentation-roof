@@ -1,7 +1,7 @@
 import torchvision.transforms as transforms
 
 # training data augmentation에 사용할 transform 정의
-trans_input = transforms.Compose([
+transform_input = transforms.Compose([
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(180),
@@ -10,7 +10,7 @@ trans_input = transforms.Compose([
     transforms.GaussianBlur(kernel_size=5),  # target에 적용 X
     transforms.ToTensor()  # 이미지를 텐서로 나타냄
 ])
-trans_target = transforms.Compose([
+transform_target = transforms.Compose([
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(180),
