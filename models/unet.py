@@ -2,8 +2,9 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from torchvision.transforms import functional as functional
+import torchvision
 
+# convolutional layer 2번
 class DoubleConv2d(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -18,6 +19,7 @@ class DoubleConv2d(nn.Module):
     def forward(self, x):
         return self.sequence(x)
         
+# maxpooling -> convolutional layer 2번 적용으로 expansive path에서 concatenate할 context를 만듦
 class ContractingPath(nn.Module):
     def __init__(self, in_channels, out_channels, max_pooling=True):
         super().__init__()
@@ -29,7 +31,9 @@ class ContractingPath(nn.Module):
         if self.max_pooling: x = F.max_pool2d(x, kernel_size=2)
 
         return self.double_conv2d(x)
-    
+
+# upconvolution -> context 가운데 부분 crop해서 concatenate -> convolutional layer 2번 적용
+# padding을 하지 않아서 crop 사용(u-net 논문과 최대한 동일하게 구현)    
 class ExpansivePath(nn.Module):
     def __init__(self, in_channels, out_channels, context):
         super().__init__()
@@ -42,16 +46,17 @@ class ExpansivePath(nn.Module):
         x = self.upconv2d(x)
 
         context_crop_top = (context.size()[2] - x.size()[2]) // 2
-        context_crop_left = (context.size()[3] - x.size()[2]) // 2
+        context_crop_left = (context.size()[3] - x.size()[3]) // 2
         x_height = x.size()[2]
         x_width = x.size()[3]
-        context = functional.crop(context, top=context_crop_top, left=context_crop_left, height=x_height, width=x_width)
+        context = torchvision.transforms.functional.crop(context, top=context_crop_top, left=context_crop_left, height=x_height, width=x_width)
 
         x = torch.cat((context, x), dim=1)
         x = self.double_conv2d(x)
 
         return x
 
+# 마지막으로 1채널로 만드는 1x1 커널 convolutional layer + dropout 적용
 class FullyConv2d(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -65,6 +70,7 @@ class FullyConv2d(nn.Module):
     def forward(self, x):
         return self.sequence(x)
 
+# 모델 구성
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
@@ -83,7 +89,6 @@ class Model(nn.Module):
         self.fconv2d = FullyConv2d(in_channels=8, out_channels=1)
 
     def forward(self, x):
-        # contracting, downsampling()
         context1 = self.contract1(x)
         context2 = self.contract2(context1)
         context3 = self.contract3(context2)
