@@ -1,7 +1,7 @@
 import torchvision.transforms as transforms
 
 # training data augmentation에 사용할 transform 정의
-transform_input = transforms.Compose([
+transform_image = transforms.Compose([
     transforms.RandomVerticalFlip(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(180),
