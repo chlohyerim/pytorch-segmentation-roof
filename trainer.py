@@ -1,62 +1,63 @@
-import os
-
 import torch
 from torch import optim
 from torch import nn
 
-import loader
 from models import unet
 
-# hyper-param 설정
-learning_rate = 0.001
-n_epoch = 30
+from torch.utils.data import DataLoader
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model = unet.Model().to(device)
+from segmentation_dataset import SegmentationDataset
+import aug
 
-state_dict_path = 'checkpoints/state_dict.pt'
+def train(
+    model,
+    device,
+    n_epoch=10,
+    batch_size=1,
+    learning_rate=1e-5
+):
+    train_dataset = SegmentationDataset(
+        X_dir='data/train/X',
+        y_dir='data/train/y',
+        transform_X=aug.transform_X,
+        transform_y=aug.transform_y
+    )
 
-if os.path.exists(state_dict_path):
-    checkpoint = torch.load(state_dict_path)
+    train_dataloader = DataLoader(
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=True
+    )
 
-    model.load_state_dict(checkpoint['state_dict'])
-else:
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    loss_fn = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(
+        params=model.parameters(),
+        lr=learning_rate
+    )
+
+    criterion = nn.BCEWithLogitsLoss()
+
+    global_step = 0
 
     model.train()
+    
+    for epoch in range(1, n_epoch + 1):
+        for batch in train_dataloader:
+            X = batch['X'].to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+            y = batch['y'].to(device=device, dtype=torch.long)
 
-    step = 0
-    loss_min = None
-    state_dict_tosave = None
+            optimizer.zero_grad(set_to_none=True)
 
-    # train
-    for epoch in range(n_epoch):
-        for image, target in loader.train_dataloader:
-            image = image.to(device)
-            target = target.to(device)
-
-            optimizer.zero_grad()
-
-            model_output = model(image)
-
-            print(model_output.size(), target.size())
-
-            loss = loss_fn(model_output, target) # 오차를 뭘로 ?
+            pred = model(X)
+            loss = criterion(pred.squeeze(dim=1), y.squeeze(dim=1).float())
 
             loss.backward()
             optimizer.step()
 
-            is_tosave = False
+            epoch_loss = loss.item()
 
-            if loss_min == None or loss_min > loss.item():
-                is_tosave = True
-                loss_min = loss.item()
-                state_dict_tosave = model.state_dict()
+            global_step += 1
+        
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model = unet.Model().to(device)
 
-            if (step + 1) % 1000 == 0:
-                print("Step: {}\tLoss: {}\tUpdating model to save: {}".format(step + 1, loss.item(), is_tosave))
-
-            step += 1
-
-    torch.save({'state_dict': state_dict_tosave}, state_dict_path)
+train(model=model, device=device)

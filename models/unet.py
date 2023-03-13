@@ -10,9 +10,9 @@ class DoubleConv2d(nn.Module):
         super().__init__()
 
         self.sequence = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3),
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3),
+            nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, padding=1),
             nn.ReLU()
         )
 

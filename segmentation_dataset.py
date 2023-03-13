@@ -1,34 +1,37 @@
 import torch
 from torch.utils import data
 
+from pathlib import Path
+from os import listdir
+from os.path import splitext
 import time
 import PIL
 
-random_seed = time.time()
-
 # Segmentation을 위한 dataset 클래스 정의
 class SegmentationDataset(data.Dataset):
-    def __init__(self, images:list, targets:list, transform_image=None, transform_target=None):
-        self.images = images
-        self.targets = targets
-        self.transform_image = transform_image
-        self.transform_target = transform_target
-        self.images_dtype = torch.float32
-        self.targets_dtype = torch.long
-    
+    def __init__(self, X_dir, y_dir, transform_X, transform_y):
+        self.X_dir = X_dir
+        self.y_dir = y_dir
+        self.transform_X = transform_X
+        self.transform_y = transform_y
+
+        self.names = [splitext(file)[0] for file in listdir(X_dir)]
+        self.random_seed = time.time()
+
     def __len__(self):
-        return len(self.images)
+        return len(self.names)
     
-    def __getitem__(self, index:int):
-        X = PIL.Image.open('data/train/X/' + self.images[index])
-        y = PIL.Image.open('data/train/y/' + self.targets[index])
+    def openimage(self, directory, name):
+        return PIL.Image.open(directory + '/' + name + '.png')
+    
+    def __getitem__(self, index):
+        name = self.names[index]
+        X = self.openimage(self.X_dir, name)
+        y = self.openimage(self.y_dir, name)
 
-        if self.transform_image is not None:
-            torch.manual_seed(random_seed)
-            X = self.transform_image(X)
+        torch.manual_seed(self.random_seed)
 
-        if self.transform_target is not None:
-            torch.manual_seed(random_seed)
-            y = self.transform_target(y)
-
-        return X, y
+        return {
+            'X': torch.as_tensor(self.transform_X(X)).float(),
+            'y': torch.as_tensor(self.transform_y(y)).long()
+        }
