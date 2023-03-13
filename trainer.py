@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from segmentation_dataset import SegmentationDataset
 import aug
+from losses import iou
 
 def train(
     model,
@@ -45,10 +46,11 @@ def train(
             X = batch['X'].to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
             y = batch['y'].to(device=device, dtype=torch.long)
 
-            optimizer.zero_grad(set_to_none=True)
-
             pred = model(X)
             loss = criterion(pred.squeeze(dim=1), y.squeeze(dim=1).float())
+            loss += iou.IoULoss(pred.squeeze(dim=1), y.squeeze(dim=1).float())
+
+            optimizer.zero_grad(set_to_none=True)
 
             loss.backward()
             optimizer.step()
